@@ -97,7 +97,8 @@ def test_search_uses_small_metadata_projection_and_preserves_it_on_next_pages(tm
     def fake_get(url,timeout):
         params=parse_qs(urlsplit(url).query)
         fields=params['fields'][0].split(',')
-        assert 'authors.record' in fields
+        # Citation queries should not pull enormous ATLAS author arrays.
+        assert 'authors.record' not in fields
         assert 'arxiv_eprints' in fields
         assert 'citation_count' in fields
         assert 'abstract' not in fields
@@ -114,3 +115,23 @@ def test_search_uses_small_metadata_projection_and_preserves_it_on_next_pages(tm
     assert [r['id'] for r in results]==[1,2]
     assert len(calls)==2
     assert 'fields=' in calls[1]
+
+
+def test_author_census_opt_in_projects_author_record(tmp_path,monkeypatch):
+    from urllib.parse import parse_qs,urlsplit
+    api=audit.API(tmp_path)
+    class Response:
+        status_code=200
+        def raise_for_status(self):pass
+        def json(self):
+            return {'hits':{'total':{'value':1},'hits':[{
+                'id':21,'metadata':{'titles':[{'title':'pilot'}],
+                      'authors':[{'record':{'$ref':'https://inspirehep.net/api/authors/7'}}]}}]},
+                    'links':{}}
+    def fake_get(url,timeout):
+        fields=parse_qs(urlsplit(url).query)['fields'][0].split(',')
+        assert 'authors.record' in fields
+        return Response()
+    monkeypatch.setattr(api.http,'get',fake_get)
+    rows=list(api.search('a "Some Verified Author"',include_authors=True))
+    assert len(rows)==1
