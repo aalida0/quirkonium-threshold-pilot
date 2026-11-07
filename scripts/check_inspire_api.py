@@ -18,6 +18,24 @@ def main():
         except Exception as e:
             failed = True
             print(f"ERROR arXiv={arxiv}: {e}", file=sys.stderr)
+    # Exercise the actual projected citation-search response (without
+    # traversing a full citation graph), including the problematic recid.
+    if not failed:
+        try:
+            from urllib.parse import urlencode
+            fields='control_number,titles,arxiv_eprints,dois,earliest_date,citation_count'
+            probe=api.get('/api/literature', {
+                'q':'refersto:recid:296528','size':3,'page':1,'fields':fields
+            })
+            rows=probe.get('hits',{}).get('hits',[])
+            if not rows:
+                raise ValueError('INSPIRE returned zero citation records for smoke test')
+            print(f"OK filtered citation probe: {len(rows)} results, "
+                  f"first recid={canonical_literature_id(rows[0])}, "
+                  f"fields={fields}")
+        except Exception as e:
+            failed=True
+            print(f"ERROR projected citation probe: {e}",file=sys.stderr)
     return 1 if failed else 0
 
 if __name__ == "__main__":
