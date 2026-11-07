@@ -24,9 +24,33 @@ def recid(v):
     m = REF.search(v) if isinstance(v,str) else None
     return int(m.group(1)) if m else None
 
+def canonical_literature_id(record):
+    """Resolve the numeric INSPIRE recid from a literature response.
+
+    /api/arxiv/<eprint> returns the eprint in top-level 'id', not a
+    numeric INSPIRE recid. Literature search hits usually have numeric
+    'id'. The canonical metadata.control_number works for both.
+    """
+    meta = record.get('metadata') or {}
+    for candidate in (meta.get('control_number'), record.get('id')):
+        if candidate is None:
+            continue
+        try:
+            return int(candidate)
+        except (TypeError, ValueError):
+            pass
+    for key in ('json', 'self', 'citations'):
+        candidate = recid((record.get('links') or {}).get(key))
+        if candidate is not None:
+            return candidate
+    raise ValueError(
+        'Numeric INSPIRE literature recid unavailable: top-level id=%r, metadata.control_number=%r'
+        % (record.get('id'), meta.get('control_number'))
+    )
+
 def compact(r):
     m=r.get('metadata',{})
-    return dict(id=int(r['id']), title=(m.get('titles') or [{}])[0].get('title',''),
+    return dict(id=canonical_literature_id(r), title=(m.get('titles') or [{}])[0].get('title',''),
        date=m.get('earliest_date') or m.get('preprint_date') or '',
        arxiv=(m.get('arxiv_eprints') or [{}])[0].get('value',''),
        doi=[x.get('value','') for x in m.get('dois',[])], citations=m.get('citation_count'))
@@ -92,7 +116,7 @@ def main():
     nodes={};depth={};edges=set();problems=[];authors={}
     try:
         for arxiv in SEEDS:
-            record=api.get('/api/arxiv/'+arxiv); ident=int(record['id'])
+            record=api.get('/api/arxiv/'+arxiv); ident=canonical_literature_id(record)
             nodes[ident]=compact(record);depth[ident]=0
             for a in record.get('metadata',{}).get('authors',[]):
                 aid=recid(a.get('record'))
@@ -113,7 +137,7 @@ def main():
                         else:problems.append({'paper':ident,'unresolved_reference':True})
                     for citing in api.search('refersto:recid:'+str(ident)):
                         if not cutoff_ok(citing,args.cutoff):continue
-                        rid=int(citing['id']);nodes[rid]=compact(citing)
+                        rid=canonical_literature_id(citing);nodes[rid]=compact(citing)
                         edges.add((rid,ident,level+1,'citation'));depth.setdefault(rid,level+1)
                 except Exception as ex:
                     problems.append({'paper':ident,'depth':level,'error':str(ex)})
