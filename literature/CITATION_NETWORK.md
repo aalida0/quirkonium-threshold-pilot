@@ -1,20 +1,18 @@
-# Citation network evidence ledger — INCOMPLETE, cutoff 2026-11-07
-Seed registry:
-| Key | arXiv | DOI | inspected content | INSPIRE record |
-|---|---|---|---|---|
-| D2012 | 1112.4629 | 10.1088/0954-3899/39/3/035001 | potential eqs/table, phenom discussion | API not resolved |
-| CKY2009 | 0810.1524 | 10.1016/j.nuclphysb.2008.11.029 | model charges, widths | API not resolved |
-| FK2011 | 1106.3101 | 10.1103/PhysRevD.84.035001 | abstract/selected sections | API not resolved |
-| CCT2009 | 0812.0843 | 10.1088/1126-6708/2009/05/045 | abstract/context | API not resolved |
-| BCY2026 | 2506.14552 | 10.1007/JHEP05(2026)154 | Green function eqs and vector interference | API completeness unverified |
+# INSPIRE audit ledger: not yet executed
 
-Search ledger:
-| Date | Query/source | Coverage | Gaps |
-|---|---|---|---|
-| 2026-11-07 | web: quirkonium threshold, electron–positron, Coulomb+linear, ISR, vector decay | representative close papers | no documented full hit counts or pagination |
-| 2026-11-07 | alphaXiv: quirkonium/threshold/infracolor/Green function | 2011, 2024 and 2026 methods retrieved | no proof of completeness |
-| 2026-11-07 | INSPIRE public API arXiv-identifier fetch | inaccessible in available environment | canonical IDs, all forward/backward and second-hop citation edges UNRESOLVED |
+Cutoff: 7 November 2026. Seeds:
+- Domenech-Garret arXiv:1112.4629 (quirkonium spectroscopy).
+- Cheung–Keung–Yuan arXiv:0810.1524 (vectorlike iquarkonium widths).
+- Fok–Kribs arXiv:1106.3101 (chiral quirkonium decays).
+- Cai–Cheng–Terning arXiv:0812.0843 (quirky little Higgs).
+- Bai–Chen–Yang arXiv:2506.14552 (toponium threshold and interference).
 
-Observed source-paper edges: Domenech-Garret discusses Kang–Luty and earlier iQuarkonium work; Bai–Chen–Yang cites previous vector toponium e+e− interference refs [40] and [52] and earlier top threshold Green-function calculations. Their exact predecessor metadata and a full graph are not yet extracted.
+**No live INSPIRE API result was obtained in this environment**: direct DNS lookup failed, so forward/backward graph, two-hop edges, author publication counts and DOI/arXiv deduplication remain UNKNOWN.
 
-**STOP gate:** must retrieve INSPIRE seed records, paginate citing+referenced records for each seed, traverse a relevant second hop, DOI/arXiv dedup, read close full texts and record each candidate observable before saying no equivalent calculation exists. This ledger does NOT satisfy the requested exhaustive citation audit.
+A complete, paginated and resumable **local request** has now been implemented in scripts/inspire_two_hop.py. It extracts every seed's canonical author IDs, seeks all papers of each seed author, traverses both citation directions to depth two, caches every HTTP JSON response, and exports nodes, edges, author census, topic-title triage and coverage-status records. Before declaring an audit complete, inspect coverage.json, manually reconcile unlinked records and read full texts of close matches.
+
+Run instructions: literature/INSPIRE_LOCAL_RUN.md.
+
+Related source **not yet compared against the exact published inputs**: J.-L. Domenech-Garret and M.-A. Sanchis-Lozano, QQ-onia package, arXiv:0805.2704, CPC 180 (2009) 768, DOI 10.1016/j.cpc.2008.11.011, numerical package archived at DOI 10.17632/zydk6xjzp8.1.
+
+An automated author-paper search through an unrelated system earlier returned false matches for multiple authors. It is not legitimate evidence of an INSPIRE author census; canonical author record matching is mandatory.
