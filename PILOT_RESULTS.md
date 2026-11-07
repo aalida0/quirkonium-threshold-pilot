@@ -1,6 +1,24 @@
-# Pilot results: only spectrum diagnostics
-Seven tests PASS. Cornell finite-difference and independent Numerov agree on eigenenergies (see validation/SPECTRUM_VALIDATION.md). Benchmark III mQ=100 GeV: computed Δ21=0.377153 GeV vs published 0.375 GeV; benchmark V mQ=500 GeV: 0.920097 vs 0.850; benchmark VI mQ=500 GeV: 3.197387 vs 2.980. Heavy WFO 2S mismatches reach ~30%/45% and remain unresolved.
-Selected photon-only, LO Table V control partial widths: Γ_ee^(gamma)=14.1996 keV, Γ_3gIC=3.09281 keV, Γ_gamma2gIC=2.38316 keV using alphaEM=1/128, alphaIC=.073 and M≈2mQ. These are neither full physical Γ_total nor BRs.
-Code: src/spectrum.py, src/shooting.py, src/widths.py; tests/test_spectrum.py; run_pilot.py writes benchmarks/numerical_results.json and two spectrum *diagnostic* PNGs.
-No complete two-hop INSPIRE citation graph; physical model constraints unknown; no matched Green function, real Γ_total, coherent muon amplitude, ISR, beam convolution, sensitivity, or exclusion. No detector simulation.
-Status: numerical code PASS (7/7); published spectrum PARTIAL; novelty/physical viability/current matching UNKNOWN and therefore STOP. Use PILOT_DECISION.md for research decision.
+# Results ledger — 7 November 2026
+
+## Spectrum and independent numerical checks
+
+mQ=100 GeV, alpha'=0.091, sigma=0.18 GeV^2: published Delta21=0.375 GeV, ours 0.37716.
+mQ=500 GeV, alpha'=0.073, sigma=0.18: published 0.850, ours 0.92015.
+mQ=500 GeV, alpha'=0.102, sigma=18: published 2.980, ours 3.19765.
+Published Table V 0.850 is below analytic pure Coulomb Delta21=0.8881667 using the printed inputs. Local independent finite-difference and Numerov solvers agree. Original QQ-onia PAW code identified, not executed; exact source-card provenance UNKNOWN. See validation/HIGH_MASS_DIAGNOSTIC.md.
+
+## Electroweak and hidden-channel LO vector width
+
+Consistent with one **singlet** Q~(1,1,-1;3_IC), rather than CKY's SU(2) doublet, code now includes tree coherent gamma/Z to 12 SM fermion flavors, WW s-channel, Zh, 3gIC, gamma2gIC, Z2gIC. Photon vector-current prefactor and chiral-current decomposition checked. Z2gIC massive phase space has the correct I(0)=pi^2−9 analytic limit.
+
+At diagnostic control 1S wavefunctions M=2mQ+E1, LO partonic accounted sums are 56.680, 129.417, 478.416 keV for Tables III/V/VI respectively; respective ee partial rates 6.733, 15.072, 52.369 keV. These are **not physical total widths**: hard-current matching, NLO corrections, hidden hadronization, missing loop channels, external WW/Zh normalization and model viability unresolved. See theory/VECTOR_CURRENT_LO_MATCHING.md and scripts/run_vector_widths.py.
+
+## Test evidence
+
+The complete local package was executed and passed 19 tests (7 spectrum, 8 vector, 4 offline INSPIRE parser/graph tests). GitHub includes a slightly leaner test subset; do not label its tests as independently executed in this tool environment.
+
+## Citation graph
+
+Live INSPIRE is unreachable in model execution environment: *zero canonical API graph results collected*. The reproducible, cached and paginated local runner lives at scripts/inspire_two_hop.py; see literature/INSPIRE_LOCAL_RUN.md. A complete novel-observable audit must wait for returned source records and close full-text review.
+
+Status: numerical spectrum PASS, published exact replication PARTIAL, leading photon/fermion current checked, LO channel sum provisional, physical width UNKNOWN, citation audit UNKNOWN, observable line shape NOT RUN, novelty UNKNOWN. This is a conditional feasibility investigation, NOT paper readiness.
