@@ -5,6 +5,7 @@ Run from a networked host. Stores all public metadata and HTTP cache locally.
 A graph traversal is *not* a substitute for reading full-text novelty matches.
 """
 import argparse, csv, hashlib, json, re, sys, time
+from collections import deque
 from pathlib import Path
 from urllib.parse import urlencode
 import requests
@@ -60,40 +61,126 @@ def cutoff_ok(r, date):
     return not d or d[:10]<=date[:len(d[:10])]
 
 class API:
-    def __init__(self, cache, base=URL, delay=.4):
-        self.cache=Path(cache); self.cache.mkdir(parents=True,exist_ok=True)
-        self.base=base; self.delay=delay; self.last=0; self.count=0
-        self.http=requests.Session(); self.http.headers['User-Agent']='quirkonium-threshold-pilot/audit'
+    """Cached, rate-limited and observable INSPIRE REST client.
+
+    INSPIRE documents 15 requests / rolling five seconds / IP address.
+    The default deliberately leaves headroom: 12 / 5.2 seconds.
+    Every attempt, including HTTP 429 and retries, consumes a slot.
+    """
+    def __init__(self, cache, base=URL, max_requests=12,
+                 window_seconds=5.2, read_timeout=20):
+        if not 1 <= max_requests <= 15:
+            raise ValueError("requests per five-second window must be 1..15")
+        if window_seconds < 5.0:
+            raise ValueError("rolling rate window must be at least five seconds")
+        self.cache=Path(cache)
+        self.cache.mkdir(parents=True, exist_ok=True)
+        self.base=base
+        self.max_requests=max_requests
+        self.window_seconds=window_seconds
+        self.read_timeout=read_timeout
+        self.times=deque()
+        self.count=0
+        self.cache_hits=0
+        self.http=requests.Session()
+        self.http.headers['User-Agent']='quirkonium-threshold-pilot/audit'
+    @staticmethod
+    def progress(message):
+        print(f"[{time.strftime('%H:%M:%S')}] {message}",
+              file=sys.stderr, flush=True)
+    def rate_limit(self):
+        while True:
+            now=time.monotonic()
+            while self.times and now-self.times[0]>=self.window_seconds:
+                self.times.popleft()
+            if len(self.times)<self.max_requests:
+                self.times.append(now)
+                return
+            delay=max(.01,self.window_seconds-(now-self.times[0])+.01)
+            self.progress(f"RATE_LIMIT waiting {delay:.1f}s "
+                          f"(max {self.max_requests} requests / "
+                          f"{self.window_seconds:.1f}s rolling window)")
+            time.sleep(delay)
     def get(self,path,params=None):
         url=(path if path.startswith('http') else self.base+path)
-        if params:url+='?'+urlencode(params)
-        h=hashlib.sha256(url.encode()).hexdigest(); location=self.cache/(h+'.json')
-        if location.exists(): return json.loads(location.read_text())
-        for attempt in range(7):
-            time.sleep(max(0,self.delay-(time.monotonic()-self.last)))
+        if params:
+            url+='?'+urlencode(params)
+        key=hashlib.sha256(url.encode()).hexdigest()
+        location=self.cache/(key+'.json')
+        if location.exists():
+            self.cache_hits+=1
+            return json.loads(location.read_text())
+        for attempt in range(1,8):
+            self.rate_limit()
+            self.count+=1
+            self.progress(f"REQUEST {self.count}: {url[:190]} "
+                          f"(attempt {attempt}/7, cached={self.cache_hits})")
             try:
-                r=self.http.get(url,timeout=40); self.count+=1; self.last=time.monotonic()
-                if r.status_code in (429,500,502,503,504):
-                    time.sleep(min(40,5*(attempt+1)));continue
-                r.raise_for_status(); obj=r.json();save(location,obj);return obj
-            except Exception as e:
-                if attempt==6:raise RuntimeError(f'API unavailable: {url}: {e}') from e
-                time.sleep(min(20,2**attempt))
-        raise RuntimeError('retry budget exhausted for '+url)
+                response=self.http.get(url,timeout=(10,self.read_timeout))
+                if response.status_code==429:
+                    value=response.headers.get('Retry-After','')
+                    try: retry=float(value)
+                    except (ValueError,TypeError): retry=0.
+                    delay=max(5.3,retry)
+                    self.progress(f"HTTP 429: waiting {delay:.1f}s "
+                                  "before next request; failed requests count")
+                    time.sleep(delay)
+                    continue
+                if response.status_code in (500,502,503,504):
+                    delay=min(45.,5.0*attempt)
+                    self.progress(f"HTTP {response.status_code}: "
+                                  f"waiting {delay:.1f}s before retry")
+                    time.sleep(delay)
+                    continue
+                response.raise_for_status()
+                obj=response.json()
+                save(location,obj)
+                return obj
+            except (requests.RequestException,ValueError) as error:
+                if isinstance(error,requests.HTTPError) and error.response is not None:
+                    # Irrecoverable record/parameter failures should surface promptly.
+                    if error.response.status_code in (400,401,403,404,422):
+                        raise RuntimeError(f"API rejected {url}: {error}") from error
+                if attempt==7:
+                    raise RuntimeError(f"API failed after 7 attempts: "
+                                       f"{url}: {error}") from error
+                delay=min(30.,2.0*attempt)
+                self.progress(f"ERROR {type(error).__name__}: {error}; "
+                              f"retry in {delay:.1f}s")
+                time.sleep(delay)
+        raise RuntimeError("Retry budget exhausted: "+url)
     def search(self,query):
-        path='/api/literature';params=dict(q=query,size=100,page=1)
-        seen=set();returned=0;total=None
+        path='/api/literature'
+        params=dict(q=query,size=100,page=1)
+        seen=set()
+        returned=0
+        total=None
+        page=0
         while True:
-            obj=self.get(path,params); hits=obj.get('hits',{})
-            num=hits.get('total',0);total=num.get('value',0) if isinstance(num,dict) else num
-            for row in hits.get('hits',[]):
-                returned+=1;yield row
+            obj=self.get(path,params)
+            page+=1
+            hits=obj.get('hits',{})
+            total_raw=hits.get('total',0)
+            total=(total_raw.get('value',0) if isinstance(total_raw,dict)
+                   else total_raw)
+            rows=hits.get('hits',[])
+            returned+=len(rows)
+            self.progress(f"SEARCH {query[:75]!r}: page {page}, "
+                          f"page_results={len(rows)}, received={returned}, "
+                          f"reported_total={total}")
+            for row in rows:
+                yield row
             nxt=obj.get('links',{}).get('next')
-            if not nxt:break
-            if nxt in seen:raise RuntimeError('Cyclic page in '+query)
-            seen.add(nxt); path=nxt;params=None
+            if not nxt:
+                break
+            if nxt in seen:
+                raise RuntimeError("Cyclic pagination link for "+query)
+            seen.add(nxt)
+            path=nxt
+            params=None
         if total is not None and returned!=int(total):
-            raise RuntimeError(f'Incomplete pagination: {query} {returned}/{total}')
+            raise RuntimeError(f"Incomplete pagination for {query}: "
+                               f"{returned}/{total}")
 
 def export_csv(filename,headers,rows):
     with Path(filename).open('w',newline='') as fh:
@@ -110,21 +197,38 @@ def main():
     p.add_argument('--max-nodes',type=int,default=0)
     p.add_argument('--limit-depth1',type=int,default=0)
     p.add_argument('--base',default=URL)
+    p.add_argument('--requests-per-window',type=int,default=12,
+                   help='Conservative IP-wide limit; INSPIRE permits 15 per 5s')
+    p.add_argument('--window-seconds',type=float,default=5.2,
+                   help='Rolling window for the request limiter (minimum 5s)')
+    p.add_argument('--read-timeout',type=int,default=20,
+                   help='HTTP response read timeout in seconds')
     args=p.parse_args()
     out=Path(args.output);out.mkdir(parents=True,exist_ok=True)
-    api=API(out/'http_cache',base=args.base)
+    api=API(out/'http_cache',base=args.base,
+            max_requests=args.requests_per_window,
+            window_seconds=args.window_seconds,
+            read_timeout=args.read_timeout)
+    api.progress('START: resolving 5 seed papers; '
+                 f'limit {api.max_requests}/{api.window_seconds}s, '
+                 f'cache={api.cache}')
     nodes={};depth={};edges=set();problems=[];authors={}
     try:
         for arxiv in SEEDS:
+            api.progress(f'SEED resolving arXiv:{arxiv}')
             record=api.get('/api/arxiv/'+arxiv); ident=canonical_literature_id(record)
             nodes[ident]=compact(record);depth[ident]=0
+            api.progress(f'SEED OK arXiv:{arxiv} -> INSPIRE {ident}')
             for a in record.get('metadata',{}).get('authors',[]):
                 aid=recid(a.get('record'))
                 if aid:authors[aid]=a.get('full_name','')
                 else:problems.append({'paper':ident,'unresolved_author':a.get('full_name')})
         for level in (0,1):
             todo=sorted([ident for ident,d in depth.items() if d==level])
+            api.progress(f'DEPTH {level}: {len(todo)} papers to inspect')
             for index,ident in enumerate(todo,1):
+                api.progress(f'DEPTH {level} paper {index}/{len(todo)}: '
+                             f'INSPIRE {ident}; graph_nodes={len(depth)}')
                 if level==1 and args.second_hop=='relevant' and not TOPIC.search(nodes.get(ident,{}).get('title','')):
                     continue
                 try:
@@ -141,21 +245,26 @@ def main():
                         edges.add((rid,ident,level+1,'citation'));depth.setdefault(rid,level+1)
                 except Exception as ex:
                     problems.append({'paper':ident,'depth':level,'error':str(ex)})
-                if index%25==0:
-                    print('depth',level,'processed',index,'/',len(todo),'nodes',len(depth),file=sys.stderr)
+                api.progress(f'DEPTH {level} completed {index}/{len(todo)}; '
+                             f'graph_nodes={len(depth)}, edges={len(edges)}, '
+                             f'errors={len(problems)}, requests={api.count}')
                 if args.max_nodes and len(depth)>=args.max_nodes:
                     problems.append({'truncated_max_nodes':args.max_nodes});break
                 if args.limit_depth1 and level==1 and index>=args.limit_depth1:
                     problems.append({'truncated_depth1':args.limit_depth1});break
         if args.hydrate_all:
+            api.progress('HYDRATE: retrieving missing node metadata')
             missing=[ident for ident in depth if ident not in nodes]
             for index,ident in enumerate(missing,1):
+                if index==1 or index%10==0:
+                    api.progress(f'HYDRATE {index}/{len(missing)} INSPIRE {ident}')
                 try:
                     record=api.get('/api/literature/'+str(ident))
                     if cutoff_ok(record,args.cutoff):nodes[ident]=compact(record)
                     else:problems.append({'record_after_cutoff':ident})
                 except Exception as ex:problems.append({'hydration_failed':ident,'error':str(ex)})
-                if index%100==0:print('hydration',index,'/',len(missing),file=sys.stderr)
+                if index%100==0:
+                    api.progress(f'HYDRATE completed {index}/{len(missing)}')
         save(out/'node_metadata.json',nodes);save(out/'seed_authors.json',authors)
         export_csv(out/'edges.csv',['source','target','hop','type'],
              (dict(source=s,target=t,hop=h,type=k) for s,t,h,k in sorted(edges)))
@@ -163,7 +272,8 @@ def main():
              (dict(**r,hop=depth.get(i)) for i,r in nodes.items()))
         author_result={}
         if not args.skip_authors:
-            for aid,name in authors.items():
+            for ix,(aid,name) in enumerate(authors.items(),1):
+                api.progress(f'AUTHOR {ix}/{len(authors)} INSPIRE {aid}: {name}')
                 try:
                     profile=api.get('/api/authors/'+str(aid)).get('metadata',{})
                     inspire=[x.get('value') for x in profile.get('ids',[]) if 'INSPIRE' in x.get('schema','').upper()]
@@ -197,8 +307,16 @@ def main():
              problems=problems)
         save(out/'coverage.json',summary)
         print(json.dumps(summary,indent=2))
+        api.progress(f'FINISHED: requests={api.count}, cached={api.cache_hits}, '
+                     f'graph_nodes={len(depth)}, problems={len(problems)}')
         return 0 if summary['graph_complete'] and summary['author_census_complete'] else 2
+    except KeyboardInterrupt:
+        api.progress('INTERRUPTED: cached HTTP responses are preserved; rerun safely')
+        save(out/'interrupted.json',{'requests':api.count,'cached':api.cache_hits,
+                                   'discovered_nodes':len(depth),'edges':len(edges)})
+        raise
     except Exception as ex:
+        api.progress(f'FATAL: {ex}')
         save(out/'fatal.json',{'error':str(ex),'partial_node_count':len(depth)})
         raise
 
