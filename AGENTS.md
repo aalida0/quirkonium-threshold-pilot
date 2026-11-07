@@ -1,0 +1,11 @@
+# Pilot scientific guardrails
+- Read MODEL_CARD.md and PILOT_DECISION.md first. Use one benchmark, not a mass grid.
+- Never interpret a known numerical eigenvalue as proof of physical quirkonium observability.
+- Status values: PASS / FAIL / PARTIAL / UNKNOWN / NOT RUN. Unknown model constraints block viability claims.
+- Verify published spectrum and independent Coulomb limits before implementing Green functions.
+- The quirkonium vector current and all leading open decay channels must be matched before setting Gamma_total or BR.
+- No open-top continuum assumption for confined fundamental IC charges without a physically defined hidden inclusive channel.
+- Do not double-count Green-function poles with extra Breit–Wigner sums.
+- ISR, collider beam spread, and intrinsic widths are distinct; never use an unvalidated Gaussian as an official luminosity spectrum.
+- No detector simulation, formation probabilities, claimed exclusion/reach, or claim of literature novelty without complete evidence.
+- Keep source code and benchmark results minimal. Commit no debug/cache outputs.
