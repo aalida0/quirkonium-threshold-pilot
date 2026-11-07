@@ -1,3 +1,15 @@
+## 7 November 20:53 log diagnosis and API payload fix
+
+The supplied user log showed 382 depth-one candidates after the five seeds. It reached only 17/382 by 20:53 with about 13,818 discovered graph nodes and 15,322 citation edges. Record 296528 had 2,354 citing papers; its page 24 failed repeatedly with JSON decoding errors after decoding 56–88 MB of payload. The environment also intermittently failed to resolve inspirehep.net, and its current 12-per-5.2s rate limit was NOT the throughput bottleneck.
+
+**Root cause addressed:** generic `/api/literature` citation searches previously downloaded full metadata for up to 100 papers each—including thousands of authors of large collaborations. They now request only `control_number,titles,arxiv_eprints,dois,earliest_date,citation_count`, omitting large author and affiliation arrays; the separate canonical author census explicitly opts in to `authors.record`. This is supported by INSPIRE's `fields` search parameter. Pagination preserves the projection, and the URL-hash cache keeps the old and slim query representations separate. No existing cached pages need deleting.
+
+The API preflight now also tests a three-record filtered citing query for problematic recid 296528. Run it first after pulling the fix.
+
+**Important:** a literally unbounded two-hop graph through generic high-citation papers is extremely broad and can collect tens of thousands of mostly irrelevant HEP records. The complete crawl may still be expensive; do not assume that having a larger citation graph certifies novelty. In particular `--hydrate-all` individually looks up every referenced record not already seen in search results. For a first scientifically useful analysis, a separately labeled `--second-hop relevant` run is available, but it is **not** a full all-papers two-hop graph. Neither mode can be declared complete while page failures and unmatched INSPIRE reference links remain.
+
+The run previously reported 96 `errors` by depth 1 paper 17. Many were unlinked bibliographic references, and the saved count alone does not distinguish them from transport failures. The updated collector logs per-paper API failures as `INCOMPLETE` and keeps them in `coverage.json`, rather than silently treating them as successful.
+
 ## Live progress and rate-limiting update
 
 INSPIRE's documented per-IP limit is **15 HTTP requests in each rolling five-second window**, with rejected HTTP 429 requests also counted. The collector defaults to the more conservative **12 requests / rolling 5.2 seconds** and imposes at least **5.3 seconds** of backoff after a 429 (or the server's longer `Retry-After` value). Every HTTP attempt, including retries, consumes a rate slot.
