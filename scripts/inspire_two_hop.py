@@ -151,7 +151,13 @@ class API:
         raise RuntimeError("Retry budget exhausted: "+url)
     def search(self,query):
         path='/api/literature'
-        params=dict(q=query,size=100,page=1)
+        # INSPIRE's 'fields' cuts huge author/affiliation/abstract and
+        # reference payloads from citation-search results. It is part of
+        # the cache key and is retained by links.next pagination.
+        # authors.record is needed to verify author-ID membership.
+        fields=('control_number,titles,arxiv_eprints,dois,earliest_date,'
+                'citation_count,authors.record')
+        params=dict(q=query,size=100,page=1,fields=fields)
         seen=set()
         returned=0
         total=None
@@ -171,6 +177,15 @@ class API:
             for row in rows:
                 yield row
             nxt=obj.get('links',{}).get('next')
+            # Defensive: next-page URLs should preserve the projection.
+            # If omitted by an upstream version, retain fields explicitly.
+            if nxt and 'fields=' not in nxt:
+                from urllib.parse import urlsplit,parse_qsl,urlunsplit
+                parts=urlsplit(nxt)
+                qp=dict(parse_qsl(parts.query))
+                qp['fields']=fields
+                nxt=urlunsplit((parts.scheme,parts.netloc,parts.path,
+                                urlencode(qp),parts.fragment))
             if not nxt:
                 break
             if nxt in seen:
