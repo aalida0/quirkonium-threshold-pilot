@@ -1,3 +1,5 @@
+> **INSPIRE archive review (7 Nov 2026):** The user-supplied full graph contains 78,225 records and 152,128 edges. The broad novelty claim (“dark spectroscopy at lepton colliders”) **fails** against SIMP Spectroscopy (2016) and Dark Spectroscopy (2018). A more specific heavy singlet-quirkonium visible μμ excitation curve is **unverified** and remains physics-gated. The original author-census `complete=true` is not trustworthy: the 2008 QQ-onia paper is missing from the 2012 seed author's publication list. See [INSPIRE graph audit](literature/INSPIRE_GRAPH_AUDIT_20261107.md). No sensitivity claims authorized.
+
 # Decision (7 November 2026): CONDITIONAL CONTINUATION, no paper or scan authorization
 
 **Do not discard this project, but do not claim a publishable result or build collider sensitivity machinery yet.** The user-defined goal is a genuinely new, physically meaningful quirkonium e+e− threshold observable probing hidden confinement without detector simulation.
