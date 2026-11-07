@@ -1,3 +1,5 @@
+> **Archive audit update (7 Nov 2026):** Actual user-provided INSPIRE run processed, 78,225 graph nodes and 152,128 edges. Close prior art from [SIMP Spectroscopy (2016)](https://arxiv.org/abs/1512.07917) and [Dark Spectroscopy at Lepton Colliders (2018)](https://arxiv.org/abs/1706.05008) **rules out a broad lepton-collider dark-spectroscopy novelty claim**. Canonical author coverage is NOT fully complete: 2008 QQ-onia is absent from the Domenech-Garret 2012 seed-author record. See [INSPIRE graph audit](INSPIRE_GRAPH_AUDIT_20261107.md). The following historical content is retained as the pre-upload evidence ledger; its “not executed” statements no longer describe the current state.
+
 # Scientific novelty status: UNKNOWN / STOP for publication claims
 
 Already established:
