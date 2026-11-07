@@ -1,0 +1,2 @@
+# Potential convention
+For SU(3)_IC fundamental quirk, C_F=4/3. The reference Cornell model (Domenech-Garret, arXiv:1112.4629 Eq.4) uses V(r)=-C_F alpha'_IC/r+sigma*r+V0, sigma=0.18 GeV²*(LambdaIC/0.25 GeV)² only by a phenomenological ansatz. Here V0=0, alpha'_IC fixed at the reference hard-scale value, mu=mQ/2. Radial u(r)=rR(r), u(0)=0, ∫|u|²dr=1. The code estimates |R(0)|²=|u'(0)|² via a near-origin fit. Coulomb check E_n=-mu*a²/(2n²), |R_n(0)|²=4(mu*a)³/n³. Absolute masses are scheme/offset-dependent; level spacings are not.
