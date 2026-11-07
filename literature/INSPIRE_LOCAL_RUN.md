@@ -1,3 +1,22 @@
+## November 7 hotfix: external arXiv ID vs INSPIRE recid
+
+The first release incorrectly did `int(record['id'])` on a response from `/api/arxiv/1112.4629`. Per the INSPIRE REST schema, `id` can be the *requested external identifier*, whereas the numeric literature record is under `metadata.control_number`. Fixed in `scripts/inspire_two_hop.py`, with a regression test and a fast preflight.
+
+From your existing clone:
+
+```bash
+git pull --ff-only
+python3 scripts/check_inspire_api.py
+```
+
+The preflight should print five `OK arXiv=... INSPIRE_recid=...` rows. Only then run the full audit:
+
+```bash
+python3 scripts/inspire_two_hop.py --second-hop all --hydrate-all --output output/inspire_audit_20261107 2>&1 | tee inspire_audit.log
+```
+
+The `uno 0.3.3 requires pytest==2.6.0` warning is a pre-existing package dependency conflict and unrelated to this ID failure. For future installations, prefer `python3 -m venv .venv`, `source .venv/bin/activate`, then `python -m pip install -r requirements.txt` rather than modifying the global environment.
+
 # INSPIRE two-hop and seed-author publication census
 
 The execution environment has no DNS access to inspirehep.net. **The live audit is NOT run or certified.** An offline test fixture verifies parsing and traversal logic only.
