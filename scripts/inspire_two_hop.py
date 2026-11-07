@@ -259,6 +259,7 @@ def main():
                         rid=canonical_literature_id(citing);nodes[rid]=compact(citing)
                         edges.add((rid,ident,level+1,'citation'));depth.setdefault(rid,level+1)
                 except Exception as ex:
+                    api.progress(f'INCOMPLETE paper={ident} depth={level}: {type(ex).__name__}: {ex}')
                     problems.append({'paper':ident,'depth':level,'error':str(ex)})
                 api.progress(f'DEPTH {level} completed {index}/{len(todo)}; '
                              f'graph_nodes={len(depth)}, edges={len(edges)}, '
