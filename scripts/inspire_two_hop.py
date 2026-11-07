@@ -149,14 +149,15 @@ class API:
                               f"retry in {delay:.1f}s")
                 time.sleep(delay)
         raise RuntimeError("Retry budget exhausted: "+url)
-    def search(self,query):
+    def search(self,query,include_authors=False):
         path='/api/literature'
-        # INSPIRE's 'fields' cuts huge author/affiliation/abstract and
-        # reference payloads from citation-search results. It is part of
-        # the cache key and is retained by links.next pagination.
-        # authors.record is needed to verify author-ID membership.
+        # Citation graph pages MUST NOT include author arrays: a single ATLAS
+        # paper can have thousands of authors, leading to >80 MB JSON pages.
+        # Only the separate author census asks for authors.record.
         fields=('control_number,titles,arxiv_eprints,dois,earliest_date,'
-                'citation_count,authors.record')
+                'citation_count')
+        if include_authors:
+            fields+=',authors.record'
         params=dict(q=query,size=100,page=1,fields=fields)
         seen=set()
         returned=0
@@ -297,7 +298,7 @@ def main():
                     queries=['a '+v for v in inspire if v]+['a "'+preferred+'"']
                     matched=[];tries=[]
                     for q in queries:
-                        papers=list(api.search(q))
+                        papers=list(api.search(q,include_authors=True))
                         matched=[compact(x) for x in papers if cutoff_ok(x,args.cutoff)
                             and aid in [recid(a.get('record')) for a in x.get('metadata',{}).get('authors',[])]]
                         tries.append(dict(query=q,returned=len(papers),verified=len(matched)))
