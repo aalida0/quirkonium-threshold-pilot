@@ -1,0 +1,27 @@
+# INSPIRE two-hop and seed-author publication census
+
+The execution environment has no DNS access to inspirehep.net. **The live audit is NOT run or certified.** An offline test fixture verifies parsing and traversal logic only.
+
+## Local run
+
+Connectivity test:
+
+    python3 -c "import requests; r=requests.get('https://inspirehep.net/api/arxiv/1112.4629',timeout=30); print(r.status_code,r.json().get('id'))"
+
+Then run:
+
+    cd ~/quirkonium-threshold-pilot
+    python3 -m pip install --user requests
+    python3 scripts/inspire_two_hop.py --second-hop all --hydrate-all --output output/inspire_audit_20261107 2>&1 | tee inspire_audit.log
+
+The default seed list contains arXiv 1112.4629, 0810.1524, 1106.3101, 0812.0843, 2506.14552. The program resolves canonical author IDs from the seed records and attempts a complete bibliography search for each *seed author*, rejecting papers that do not match the canonical ID. Author-name matching without identity verification is not sufficient.
+
+The two-hop graph is: seed papers (depth zero), all papers they cite and all papers citing them (depth one), then all references and citations of every depth-one paper (depth two). All seed authors' publication lists are recorded separately. Expanding two hops from every author publication would create a different, much larger graph and is not this audit.
+
+Resume works because HTTP pages are cached by URL hash. The collector respects the official 15 requests per five seconds rule and paginates with links.next. The no-cap full mode can touch thousands of papers. Diagnostic options such as second-hop relevant, limit-depth1 and max-nodes invalidate any claim of completeness.
+
+Output includes: coverage.json, seed_authors.json, author_coverage.json, authors/*.json, nodes.csv, edges.csv, topic_candidates.json, http_cache/*.json. Read coverage.json before making novelty claims. An unlinked author, missing reference record, failed API page, metadata not hydrated or undated paper means an unresolved coverage gap. Topic-filtered titles are useful for prioritization, not proof that papers were fully examined.
+
+Share the generated outputs as a zip, optionally excluding the large HTTP cache. No sensitive author email data is exported. The actual novelty decision still requires reading close-match equations and figures.
+
+Official documentation: https://github.com/inspirehep/rest-api-doc
