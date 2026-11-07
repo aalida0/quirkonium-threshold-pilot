@@ -1,3 +1,22 @@
+## Live progress and rate-limiting update
+
+INSPIRE's documented per-IP limit is **15 HTTP requests in each rolling five-second window**, with rejected HTTP 429 requests also counted. The collector defaults to the more conservative **12 requests / rolling 5.2 seconds** and imposes at least **5.3 seconds** of backoff after a 429 (or the server's longer `Retry-After` value). Every HTTP attempt, including retries, consumes a rate slot.
+
+If an older version produces an empty log for minutes, interrupt it with `Ctrl+C`. Already saved cached JSON responses remain reusable. Update your clone and run:
+
+```bash
+git pull --ff-only
+python3 -m py_compile scripts/inspire_two_hop.py
+python3 -u scripts/check_inspire_api.py
+python3 -u scripts/inspire_two_hop.py \
+    --second-hop all --hydrate-all \
+    --requests-per-window 12 --window-seconds 5.2 \
+    --output output/inspire_audit_20261107 \
+    2>&1 | tee inspire_audit.log
+```
+
+New logging prints immediately: START, SEED, DEPTH, per-paper progress, each REQUEST, each search PAGE with totals, HYDRATE, AUTHOR, rate-limit sleeps and 429/5xx retries. Use `tail -f inspire_audit.log` from another terminal to follow the log. The complete unfiltered two-hop crawl may include a very large number of records; its output is **not** valid until `coverage.json` is produced and checked.
+
 ## November 7 hotfix: external arXiv ID vs INSPIRE recid
 
 The first release incorrectly did `int(record['id'])` on a response from `/api/arxiv/1112.4629`. Per the INSPIRE REST schema, `id` can be the *requested external identifier*, whereas the numeric literature record is under `metadata.control_number`. Fixed in `scripts/inspire_two_hop.py`, with a regression test and a fast preflight.
