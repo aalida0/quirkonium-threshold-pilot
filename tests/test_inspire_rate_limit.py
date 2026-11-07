@@ -77,3 +77,40 @@ def test_uncached_api_errors_not_silent(tmp_path,monkeypatch):
     monkeypatch.setattr(api.http,"get",lambda url,timeout:BadResponse())
     with pytest.raises(RuntimeError,match="API rejected"):
         api.get("/api/does-not-exist")
+
+
+def test_search_uses_small_metadata_projection_and_preserves_it_on_next_pages(tmp_path,monkeypatch):
+    from urllib.parse import parse_qs,urlsplit
+    calls=[]
+    class Response:
+        status_code=200
+        headers={}
+        def __init__(self,records,next_url=None):
+            self.records=records
+            self.next_url=next_url
+        def raise_for_status(self):pass
+        def json(self):
+            return {'hits':{'total':{'value':2},
+                            'hits':self.records},
+                    'links':({'next':self.next_url} if self.next_url else {})}
+    api=audit.API(tmp_path)
+    def fake_get(url,timeout):
+        params=parse_qs(urlsplit(url).query)
+        fields=params['fields'][0].split(',')
+        assert 'authors.record' in fields
+        assert 'arxiv_eprints' in fields
+        assert 'citation_count' in fields
+        assert 'abstract' not in fields
+        assert 'references' not in fields
+        calls.append(url)
+        record=lambda i:{'id':i,'metadata':{'titles':[{'title':'Quirk'}],
+                   'authors':[{'record':{'$ref':'https://inspirehep.net/api/authors/7'}}]}}
+        if len(calls)==1:
+            # Simulate INSPIRE accidentally omitting the field projection in links.next.
+            return Response([record(1)], 'https://inspirehep.net/api/literature?page=2&q=refersto%3Arecid%3A42')
+        return Response([record(2)])
+    monkeypatch.setattr(api.http,'get',fake_get)
+    results=list(api.search('refersto:recid:42'))
+    assert [r['id'] for r in results]==[1,2]
+    assert len(calls)==2
+    assert 'fields=' in calls[1]
