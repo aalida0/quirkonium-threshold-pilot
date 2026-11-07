@@ -1,32 +1,27 @@
-# Pilot 2 decision — 7 November 2026
-**Executive verdict: NO-GO for a publishable physical electron–positron quirkonium line-shape or collider-reach claim on current evidence.** This does not prove the phenomenon impossible; it means the staged model, literature and validation gates are not closed. No full scan or beam/ISR implementation authorized yet.
+# Decision (7 November 2026): CONDITIONAL CONTINUATION, no paper or scan authorization
 
-## Scientific target
-Would an observable, coherent e+e−→(Q Qbar)_(1--)→mu+mu− excitation curve retain a distinct measurable imprint of infracolor confinement after physical finite widths, interference, ISR, beam-energy spread and nuisance parameter degeneracies? **UNKNOWN — line shape not computed.**
+**Do not discard this project, but do not claim a publishable result or build collider sensitivity machinery yet.** The user-defined goal is a genuinely new, physically meaningful quirkonium e+e− threshold observable probing hidden confinement without detector simulation.
 
-## Novelty audit
-Domenech-Garret, arXiv:1112.4629, already calculates Cornell and power-law quirkonia levels, WFO and leptonic decay widths. Cheung–Keung–Yuan, arXiv:0810.1524, calculates vectorlike iquarkonium electroweak and IC widths (its electroweak representation is a doublet, NOT this singlet). Fok–Kribs, arXiv:1106.3101, calculates chiral quirk decays. Bai–Chen–Yang, arXiv:2506.14552, JHEP 05 (2026) 154, computes toponium Green functions and e+e− vector γ/Z continuum interference. Merely transferring top-threshold methods is not new. INSPIRE citation-network forward/backward two-hop audit was NOT completed in this session; absence of equivalent literature is NOT established.
+## What is now established
 
-## Model
-Vectorlike one-flavor Dirac SU(2) singlet, Q_EM=−1, SU(3)_IC fundamental, no QCD color. The three Domenech-Garret published mass/string-tension controls are NOT verified viable points. The mQ=500 GeV threshold is near sqrt(s)=1000 GeV, above FCC-ee 240–365 GeV.
+- Cornell spectrum solvers and analytic Coulomb validation pass.
+- The printed Table V high-mass splitting is below the Coulomb-only value computed from its stated mass and coupling: published 0.850 vs analytic 0.88817 GeV, converged Cornell 0.92015 GeV. Input, software or convention mismatch is supported, but the reason has not been located because original QQ-onia software inputs were not run.
+- A leading-order singlet vector-current implementation sums 12 SM f fbar modes, WW, Zh, three infragluons, photon+2 infragluons and Z+2 infragluons at diagnostic 1S inputs. LO partonic accounted sums: 56.680, 129.417, 478.416 keV. The physical total width and experimental BR remain UNKNOWN.
+- INSPIRE authors and full two-hop citation audit are NOT completed because API calls could not be made from this execution environment. The local runner has been committed and must be run on a connected machine.
+- Quirkonium potential spectroscopy and leptonic rates exist already (Domenech-Garret 2012), and quirkonium decay methods (Cheung–Keung–Yuan 2009), top Green functions and interference (Bai–Chen–Yang 2026) are established methods. Mere transplantation is not novelty.
 
-## Completed calculation
-The analytic Coulomb limit and Cornell radial FD solver plus independent Numerov shooting are tested. Seven unit/numerical tests PASS. Published mQ100 Table III Δ21: 0.375 GeV; ours 0.377153 (+0.57%); published mQ500 Table V: .850; ours .920097 (+8.25%); published Table VI: 2.980; ours 3.197387 (+7.29%). Heavy 2S WFO published discrepancy ~30–45% unresolved. FD/Numerov agree, but this does not equal independent published validation.
-Selected Table V **partial** photon ee and hidden gauge channels: 14.20, 3.09, 2.38 keV. Complete Γ_total, BR_ee and BR_mumu = UNKNOWN. No calculated cross section or line shape.
+## Priority order — stop at failed gates
 
-## Key conceptual blocker
-A purely confining Cornell potential has a discrete static color-singlet spectrum; importing the ordinary on-shell t tbar open continuum into physical charged quirk threshold predictions requires a separately derived inclusive hidden-channel matching. Pole residues and true widths must be matched to a renormalized vector correlator; do not double-count Breit–Wigner poles or confuse beam spread with Γ.
+1. Run scripts/inspire_two_hop.py locally, resolve incomplete citations/ambiguous author identities, read the exact equations and compare observable overlap for every close paper.
+2. Inspect original QQ-onia CPC code and input card; diagnose the 500 GeV table discrepancy without retuning the physics.
+3. Validate WW/Zh and full singlet vector current against an independently derived/generator amplitude; quantify alphaIC running, matching, glueballs and omitted channels and turn LO accounting into a defensible physical width.
+4. Identify one experimentally and machine-energy viable benchmark (mQ500 requires sqrt(s) near 1 TeV, not FCC-ee 240/365).
+5. Only after explicit PASS: compute ONE Green-function matched spectral observable; then consider ISR, realistic beam spread and parameter degeneracies.
 
-## Reviewer objections
-1. No certified distinct novelty over quirk spectroscopy + toponium interference.
-2. No viable machine/benchmarked model, validated total width, hidden channels or interference normalization.
-3. 500 GeV published spectrum/WFO benchmarks materially disagree; second numerical method agrees with our code but not the source table.
+## Referee risks
 
-## Next decisive checks
-1. Independently resolve published Table V/VI parameter/normalization inconsistencies; do h→0 / large-radius WFO extrapolation.
-2. Inspect model-specific charged-particle, resonance and astrophysical constraints and identify one actually viable collider-energy point.
-3. Derive full physically relevant leading vector widths including γ–Z, hidden final states, normalized current matching and coherent μμ amplitude.
-4. Complete the INSPIRE forward/backward citation audit including second hop and Bai et al.'s specific interference predecessor papers.
-5. Only after all gates PASS, compute one physically matched Green-function spectral observable and its sensitivity to Lambda_IC with nuisance/beam effects. STOP if prior art or physical suppression defeats the concept.
+1. Novelty gap not certified; quirk spectroscopy already studied.
+2. Direct vector spectral signal and physical total width not closed.
+3. Published high-mass reference mismatch unaccounted and experimental viability unspecified.
 
-**Deliverable release status:** can share numerical potential-model diagnostics and negative validation results; not a collider projection, discovery, exclusion, novelty certification, or paper-ready result.
+**Status:** CONDITIONAL GO for gate-closing calculations; NO-GO for manuscript, mass grid, ISR/beam plots or sensitivity claims.
